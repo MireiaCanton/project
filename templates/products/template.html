@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mi Página</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='products.css')}}">
+</head>
+<body>
+    <h1>Datos de la Base de Datos</h1>
+    <table>
+        <tbody>
+            {% for row in data %}
+                <tr>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ row[1] }}</td>
+                    <td>{{ row[2] }}</td>
+                    <td>{{ row[3] }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+</body>
+</html>
