@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='create.css')}}">
+</head>
+<body>
+    
+    <div class="contenedor">
+        <h1>CREA UN NUEVO PRODUCTO</h1>
+        <form action="/products/create" method="POST" enctype="multipart/form-data">
+            <label for="nombre">Nombre del Producto</label><br>
+            <input class="caja"type="text" name="nombre" required><br>
+    
+            <label for="description">Descripción</label><br>
+            <textarea class="caja" name="descripcion" rows="4" cols="50"></textarea><br>
+
+            <label for="precio">Precio</label><br>
+            <input class="caja" type="number" name="precio" step="0.01" required><br>
+    
+            <label for="foto">Foto</label><br>
+            <input type="file" id="imagen" name="foto" accept="image/*"><br><br>
+
+            <label for="categoria">Categoria</label><br>
+            <select id="miDesplegable" name="categoria">
+                <option value="1">Electrònica</option>
+                <option value="2">Roba</option>
+                <option value="3">Joguines</option>
+            </select><br><br>
+            <div class="boton">
+                <input class="button" type="submit" value="ENVIAR">
+            </div>
+        </form>
+    </div>
+</body>
+</html>
