@@ -2,75 +2,94 @@ import sqlite3, os
 from flask import Flask, g, render_template, request, redirect, url_for
 from werkzeug.utils import secure_filename
 from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
 
-UPLOAD_FOLDER = './static/img'
+
+app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + basedir + "/database.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+app.config['UPLOAD_FOLDER'] = './static/img'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 VIEW_FOLDER='/static/img/'
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-DATABASE = 'database.db'
-@app.route('/')
-def hello():
-    return render_template('./hello.html')
+db = SQLAlchemy(app)
 
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-    return db
+from flask_sqlalchemy import SQLAlchemy
 
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
 
+class Categoria(db.Model):
+    __tablename__ = "categories"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.Text, unique=True)
+    slug = db.Column(db.Text, unique=True)
+
+class Producto(db.Model):
+    __tablename__ = "products"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.Text)
+    description = db.Column(db.Text)
+    photo = db.Column(db.Text)
+    price = db.Column(db.DECIMAL(10, 2))
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
+    seller_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
+    updated = db.Column(db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
+    category = db.relationship('Categoria', backref=db.backref('products', lazy=True))
+    
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # Add user attributes here
+
+##LIST
 @app.route('/products/list')
 def index():
-    db = sqlite3.connect(DATABASE)
-    cursor = db.cursor()
-    
-    cursor.execute('''
-        SELECT products.id, products.title, products.description, products.photo, 
-            products.price, categories.name AS category_name, products.seller_id, 
-            products.created, products.updated
-        FROM products
-        JOIN categories ON products.category_id = categories.id;
+    #products = db.session.query(Producto, Categoria.name).join(Categoria, Producto.category_id == Categoria.id).add_columns(Producto.id, Producto.title, Producto.description, Producto.photo, Producto.price, Producto.created, Producto.updated).all()
+    #category_names = [product[1] for product in products]
 
-    ''')
-    
-    data = cursor.fetchall()
-    db.close()
-    
-    return render_template('/products/template.html', data=data)
+    products = db.session.query(Producto).all()
 
+    return render_template('products/template.html', data=products)
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+##READ
+@app.route('/products/read/<int:product_id>')
+def view_product(product_id):
+    products = db.session.query(Producto, Categoria.name).join(Categoria, Producto.category_id == Categoria.id).filter(Producto.id == product_id).add_columns(Producto.id, Producto.title, Producto.description, Producto.photo, Producto.price, Producto.created, Producto.updated).all()
+    category_names = [product[1] for product in products]
+
+    return render_template('products/read.html', data=products)
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 ##CREATE
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@app.route('/products/create', methods=['POST', 'GET'])
+@app.route('/products/create', methods=['GET', 'POST'])
 def crear_producto():
     if request.method == 'POST':
         nombreP = request.form['nombre']
         precioP = request.form['precio']
         descripcion = request.form['descripcion']
         categoria = request.form['categoria']
-        fecha=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        fecha = datetime.now()
 
-        if categoria == 'Electrònica':
-            categoria = 1
-        elif categoria == 'Roba':
-            categoria = 2
-        elif categoria == 'Joguines':
-            categoria = 3
+        if categoria == 'Electrónica':
+            categoria_id = 1
+        elif categoria == 'Ropa':
+            categoria_id = 2
+        elif categoria == 'Juguetes':
+            categoria_id = 3
 
-        # Verifica si se proporcionó una imagen
         if 'foto' not in request.files:
-            error_message = "Se requiere una imagen."
-            return render_template('products/create.html', error_message=error_message)
+            return render_template('products/create.html', error_message="Se requiere una imagen.")
 
         file = request.files['foto']
         if file and allowed_file(file.filename):
@@ -78,12 +97,9 @@ def crear_producto():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             ruta = VIEW_FOLDER + filename
 
-            db = sqlite3.connect(DATABASE)
-            cursor = db.cursor()
-            cursor.execute('INSERT INTO products (title, description, photo, price, category_id, created) VALUES (?, ?, ?, ?, ?,?)', (nombreP, descripcion, ruta, precioP, categoria, fecha))
-            db.commit()
-            db.close()
-
+            new_product = Producto(title=nombreP, description=descripcion, photo=ruta, price=precioP, category_id=categoria_id)
+            db.session.add(new_product)
+            db.session.commit()
             return redirect('/products/list')
         else:
             error_message = "El archivo de imagen no es válido. Asegúrate de que sea una imagen válida (ej. PNG, JPG, JPEG, GIF)."
@@ -92,104 +108,64 @@ def crear_producto():
         return render_template('products/create.html')
 
 
-##READ
-@app.route('/products/read/<int:product_id>')
-def view_product(product_id):
-    db = sqlite3.connect(DATABASE)
-    cursor = db.cursor()
-    
-    cursor.execute('''
-    SELECT products.id, products.title, products.description, products.photo, 
-           products.price, categories.name AS category_name, products.seller_id, 
-           products.created, products.updated
-    FROM products
-    JOIN categories ON products.category_id = categories.id
-    WHERE products.id = ?
-''', (product_id,))
-
-    data = cursor.fetchone()
-    db.close()
-
-    if data:
-        return render_template('products/read.html', product=data)
-    else:
-        return redirect('/products/list')
-
-##DELETE
-@app.route('/products/delete/<int:product_id>', methods=['GET', 'POST'])
-def delete_confirmation(product_id):
-    if request.method == 'POST':
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        cursor.execute(f'DELETE FROM products WHERE id = ?', (product_id,))
-        db.commit()
-        db.close()
-        return redirect('/products/list')
-    db = sqlite3.connect(DATABASE)
-    cursor = db.cursor()
-    cursor.execute(f'SELECT * FROM products WHERE id = ?', (product_id,))
-    data = cursor.fetchone()
-    db.close()
-
-    if data:
-        return render_template('products/delete.html', product=data)
-    else:
-        return "El registro no se encontró."
-
-
 ##UPDATE
-
-@app.route('/products/update/<int:product_id>', methods=['POST', 'GET'])
+@app.route('/products/update/<int:product_id>', methods=['GET', 'POST'])
 def editar_producto(product_id):
+    product = Producto.query.get(product_id)
+    if not product:
+        return "Producto no encontrado"
     if request.method == 'POST':
         nombreP = request.form['nombre']
         precioP = request.form['precio']
         descripcion = request.form['descripcion']
         categoria = request.form['categoria']
-        fecha=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if categoria == 'Electrónica':
-            categoria = 1
+            categoria_id = 1
         elif categoria == 'Ropa':
-            categoria = 2
-        elif categoria == 'Joguines':
-            categoria = 3
+            categoria_id = 2
+        elif categoria == 'Juguetes':
+            categoria_id = 3
+
+
+        fecha = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         if 'foto' in request.files:
             file = request.files['foto']
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                ruta = VIEW_FOLDER+filename
+                ruta = VIEW_FOLDER + filename
             else:
-                ruta = None  
+                ruta = None
         else:
             ruta = None
 
-        
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        if ruta == None:
-            cursor.execute(
-            'UPDATE products SET title=?, description=?, price=?, category_id=?, updated=? WHERE id=?',
-            (nombreP, descripcion, precioP, categoria, fecha, product_id)
-        )
-        else:
-            cursor.execute(
-            'UPDATE products SET title=?, description=?, price=?, category_id=?, photo=?, updated=? WHERE id=?',
-            (nombreP, descripcion, precioP, categoria, ruta, fecha, product_id)
-        )
-        db.commit()
-        db.close()
+        product.title = nombreP
+        product.description = descripcion
+        product.price = precioP
+        product.category_id = categoria_id
+        product.updated = fecha
+        if ruta:
+            product.photo = ruta
 
-        return redirect('/products/list')  
+        db.session.commit()
+        return redirect('/products/list')
+
+    return render_template('products/update.html', product=product, product_id=product_id)
+
+##DELETE
+@app.route('/products/delete/<int:product_id>', methods=['POST'])
+def delete_product(product_id):
+    product = 'ads'
+    if product:        
+        db.session.delete(product)
+        db.session.commit()
+        return redirect('/products/list')
     else:
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        cursor.execute('SELECT * FROM products WHERE id = ?', (product_id,))
-        product = cursor.fetchone()
-        db.close()
+        return "Producto no encontrado"
+    
 
-        if product:
-            return render_template('products/update.html', product=product, product_id=product_id)
-        else:
-            return redirect('/products/list') 
 
+
+if __name__ == '__main__':
+    app.run(debug=True)

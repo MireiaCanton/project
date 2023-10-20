@@ -7,24 +7,35 @@
 <body>
     <h1>Product Details</h1>
     <table>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Price</th>
-            <th>Category</th>
-            <th>Image</th>
-        </tr>
-        <tr>
-            <td>{{ product[0] }}</td>         
-            <td>{{ product[1] }}</td>         
-            <td>{{ product[2] }}</td>         
-            <td>{{ product[4] }}</td>         
-            <td>{{ product[5] }}</td>         
-            <td>
-                <img src="{{ product[3] }}" alt="{{ product[1] }} Image">
-            </td>                             
-        </tr>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Photo</th>
+                <th>Price</th>
+                <th>Category</th>
+                <th>Created</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in data %}
+                <tr>
+                    <td>{{ product.id }}</td>
+                    <td>{{ product.title }}</td>
+                    <td>{{ product.description }}</td>
+                    <td><img src="{{ product.photo }}" alt=""></td>
+                    <td>{{ product.price }}</td>
+                    <td>{{ product[1] }}</td>
+                    <td>{{ product.created }}</td>
+                    <td>{{ product.updated }}</td>
+                    <td><a href="/products/update/{{ product.id }}">📝</a></td>
+                    <td><a href="/products/read/{{ product.id }}" class="view-button">👁️</a></td>
+                    <td><a href="/products/delete/{{ product.id }}" class="delete-button">🗑️</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
     </table>
     <a href="/products/list">🏠</a>
 </body>

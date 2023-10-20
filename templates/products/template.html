@@ -1,30 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mi Página</title>
+    <title>Product List</title>
     <link rel="stylesheet" href="{{url_for('static', filename='products.css')}}">
+
 </head>
 <body>
-    <h1>Datos de la Base de Datos</h1>
+    <h1>LISTA DE PRODUCTOS</h1>
     <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Photo</th>
+                <th>Price</th>
+                <th>Category</th>
+                <th>Created</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
         <tbody>
-            {% for row in data %}
+            {% for product in data %}
                 <tr>
-                    <td>{{ row[0] }}</td> 
-                    <td>{{ row[1] }}</td> 
-                    <td>{{ row[2] }}</td> 
-                    <td><img src="{{ row[3] }}" alt="Imagen"></td>
-                    <td>{{ row[5]}}</td>                    
-                    <td>{{ row[7] }}</td>
-                    <td>{{ row[8] }}</td>
-                    <td><a href="/products/update/{{ row[0] }}">📝</a></td>
-                    <td><a href="/products/read/{{ row[0] }}" class="view-button">👁️</a></td>
-                    <td><a href="/products/delete/{{ row[0] }}" class="delete-button">🗑️</a></td>
+                    <td>{{ product.id }}</td>
+                    <td>{{ product.title }}</td>
+                    <td>{{ product.description }}</td>
+                    <td><img src="{{ product.photo }}" alt=""></td>
+                    <td>{{ product.price }}</td>
+                    <td>{{ product.category_id }}</td>
+                    <td>{{ product.created }}</td>
+                    <td>{{ product.updated }}</td>
+                    <td><a href="/products/update/{{ product.id }}">📝</a></td>
+                    <td><a href="/products/read/{{ product.id }}" class="view-button">👁️</a></td>
+                    <td><a href="/products/delete/{{ product.id }}" class="delete-button">🗑️</a></td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
-
-    <button><a href="/products/create">CREAR NUEVO PRODUCTO</a></button>
+    <button><a href="/products/create">CREAR NUEVO PRODUCTO</a>
 </body>
 </html>

@@ -11,16 +11,16 @@
         <h1>EDIT PRODUCT</h1>
         <form action="/products/update/{{ product_id }}" method="POST" enctype="multipart/form-data">
             <label for="nombre">Nombre del Producto</label><br>
-            <input class="caja" type="text" name="nombre" value="{{ product[1] }}" required><br>
+            <input class="caja" type="text" name="nombre" value="{{ product.title }}" required><br>
 
             <label for="descripcion">Descripción</label><br>
-            <textarea class="caja" name="descripcion" rows="4" cols="50">{{ product[2] }}</textarea><br>
+            <textarea class="caja" name="descripcion" rows="4" cols="50">{{ product.description }}</textarea><br>
 
             <label for="precio">Precio</label><br>
-            <input class="caja" type="number" name="precio" step="0.01" value="{{ product[4] }}"><br>
+            <input class="caja" type="number" name="precio" step="0.01" value="{{ product.price }}"><br>
 
             <label for="foto">Foto</label><br>
-            <input type="file" id="imagen" name="foto" accept="image/*" value="{{product[3]}}"><br><br>
+            <input type="file" id="imagen" name="foto" accept="image/*" value="{{product.photo}}"><br><br>
 
             <label for="categoria">Categoria</label><br>
             <select id="miDesplegable" name="categoria">
