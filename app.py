@@ -30,9 +30,19 @@ def close_connection(exception):
 def index():
     db = sqlite3.connect(DATABASE)
     cursor = db.cursor()
-    cursor.execute('SELECT * FROM products')
+    
+    cursor.execute('''
+        SELECT products.id, products.title, products.description, products.photo, 
+            products.price, categories.name AS category_name, products.seller_id, 
+            products.created, products.updated
+        FROM products
+        JOIN categories ON products.category_id = categories.id;
+
+    ''')
+    
     data = cursor.fetchall()
     db.close()
+    
     return render_template('/products/template.html', data=data)
 
 
@@ -48,33 +58,86 @@ def crear_producto():
         precioP = request.form['precio']
         descripcion = request.form['descripcion']
         categoria = request.form['categoria']
+        fecha=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         if categoria == 'Electrònica':
             categoria = 1
         elif categoria == 'Roba':
             categoria = 2
-        else:
+        elif categoria == 'Joguines':
             categoria = 3
+
+        # Verifica si se proporcionó una imagen
         if 'foto' not in request.files:
-            return redirect(request.url)
+            error_message = "Se requiere una imagen."
+            return render_template('products/create.html', error_message=error_message)
+
         file = request.files['foto']
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            ruta = VIEW_FOLDER+filename
-            
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        cursor.execute('INSERT INTO products (title, description, photo, price, category_id) VALUES (?, ?, ?, ?, ?)', (nombreP, descripcion, ruta, precioP, categoria ))
-        db.commit()
-        db.close()
-        return render_template('products/template.html')
+            ruta = VIEW_FOLDER + filename
+
+            db = sqlite3.connect(DATABASE)
+            cursor = db.cursor()
+            cursor.execute('INSERT INTO products (title, description, photo, price, category_id, created) VALUES (?, ?, ?, ?, ?,?)', (nombreP, descripcion, ruta, precioP, categoria, fecha))
+            db.commit()
+            db.close()
+
+            return redirect('/products/list')
+        else:
+            error_message = "El archivo de imagen no es válido. Asegúrate de que sea una imagen válida (ej. PNG, JPG, JPEG, GIF)."
+            return render_template('products/create.html', error_message=error_message)
     else:
         return render_template('products/create.html')
 
 
+##READ
+@app.route('/products/read/<int:product_id>')
+def view_product(product_id):
+    db = sqlite3.connect(DATABASE)
+    cursor = db.cursor()
+    
+    cursor.execute('''
+    SELECT products.id, products.title, products.description, products.photo, 
+           products.price, categories.name AS category_name, products.seller_id, 
+           products.created, products.updated
+    FROM products
+    JOIN categories ON products.category_id = categories.id
+    WHERE products.id = ?
+''', (product_id,))
+
+    data = cursor.fetchone()
+    db.close()
+
+    if data:
+        return render_template('products/read.html', product=data)
+    else:
+        return redirect('/products/list')
+
+##DELETE
+@app.route('/products/delete/<int:product_id>', methods=['GET', 'POST'])
+def delete_confirmation(product_id):
+    if request.method == 'POST':
+        db = sqlite3.connect(DATABASE)
+        cursor = db.cursor()
+        cursor.execute(f'DELETE FROM products WHERE id = ?', (product_id,))
+        db.commit()
+        db.close()
+        return redirect('/products/list')
+    db = sqlite3.connect(DATABASE)
+    cursor = db.cursor()
+    cursor.execute(f'SELECT * FROM products WHERE id = ?', (product_id,))
+    data = cursor.fetchone()
+    db.close()
+
+    if data:
+        return render_template('products/delete.html', product=data)
+    else:
+        return "El registro no se encontró."
+
 
 ##UPDATE
-# ... (your existing code)
 
 @app.route('/products/update/<int:product_id>', methods=['POST', 'GET'])
 def editar_producto(product_id):
@@ -83,12 +146,12 @@ def editar_producto(product_id):
         precioP = request.form['precio']
         descripcion = request.form['descripcion']
         categoria = request.form['categoria']
-        fecha=datetime.now()
+        fecha=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if categoria == 'Electrónica':
             categoria = 1
         elif categoria == 'Ropa':
             categoria = 2
-        else:
+        elif categoria == 'Joguines':
             categoria = 3
         if 'foto' in request.files:
             file = request.files['foto']
@@ -97,29 +160,28 @@ def editar_producto(product_id):
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 ruta = VIEW_FOLDER+filename
             else:
-                ruta = None  # No new photo was uploaded
+                ruta = None  
         else:
             ruta = None
 
-        # Update the product in the database
+        
         db = sqlite3.connect(DATABASE)
         cursor = db.cursor()
         if ruta == None:
             cursor.execute(
             'UPDATE products SET title=?, description=?, price=?, category_id=?, updated=? WHERE id=?',
-            (nombreP, descripcion, precioP, categoria, product_id, fecha)
+            (nombreP, descripcion, precioP, categoria, fecha, product_id)
         )
         else:
             cursor.execute(
             'UPDATE products SET title=?, description=?, price=?, category_id=?, photo=?, updated=? WHERE id=?',
-            (nombreP, descripcion, precioP, categoria, ruta, product_id, fecha)
+            (nombreP, descripcion, precioP, categoria, ruta, fecha, product_id)
         )
         db.commit()
         db.close()
 
-        return redirect('/products/list')  # Redirect to the product listing page or a success page
+        return redirect('/products/list')  
     else:
-        # Load the current product details from the database based on product_id
         db = sqlite3.connect(DATABASE)
         cursor = db.cursor()
         cursor.execute('SELECT * FROM products WHERE id = ?', (product_id,))
@@ -129,7 +191,5 @@ def editar_producto(product_id):
         if product:
             return render_template('products/update.html', product=product, product_id=product_id)
         else:
-            # Handle the case where the product with the given ID doesn't exist
-            # You can redirect or show an error message
-            return redirect('/products/list')  # Redirect to the product listing page
+            return redirect('/products/list') 
 

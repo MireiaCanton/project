@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirmar Eliminación</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='products.css')}}">
+</head>
+<body>
+    <h1>Confirmar Eliminación</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Price</th>
+            <th>Category</th>
+            <th>Image</th>
+        </tr>
+        <tr>
+            <td>{{ product[0] }}</td>         
+            <td>{{ product[1] }}</td>         
+            <td>{{ product[2] }}</td>         
+            <td>{{ product[3] }}</td>         
+            <td>{{ product[4] }}</td>         
+            <td>
+                <img src="{{ product[3] }}" alt="{{ product[1] }} Image">
+            </td>                             
+        </tr>
+    </table>
+    <form method="POST">
+        <p>¿Estás seguro de que deseas eliminar este registro?</p>
+        <button type="submit">✅</button>
+        <a href="/products/list">❌</a>
+    </form>
+</body>
+</html>
